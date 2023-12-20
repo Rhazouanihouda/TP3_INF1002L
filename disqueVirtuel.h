@@ -46,7 +46,7 @@ namespace TP3
 	private:
 		// Il est interdit de modifier ce modèle d'implémentation (i.e le type de m_blockDisque)!
 		std::vector<Block> m_blockDisque; // Un vecteur de blocs représentant le disque virtuel
-
+		std::vector<std::string> split(const std::string &s, char delim);
 		// Vous pouvez ajouter ici des méthodes privées
 	};
 
