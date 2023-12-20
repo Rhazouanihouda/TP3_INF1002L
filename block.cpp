@@ -10,15 +10,9 @@
  */
 
 #include "block.h"
-//vous pouvez inclure d'autres librairies si c'est nécessaire
+// vous pouvez inclure d'autres librairies si c'est nécessaire
 
 namespace TP3
 {
 	// Ajouter votre code ici !
 }
-
-}//Fin du namespace
-
-
-
-
