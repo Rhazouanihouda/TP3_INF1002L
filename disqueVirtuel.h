@@ -37,6 +37,10 @@ namespace TP3
 		int bd_create(const std::string &p_FileName);
 		int bd_rm(const std::string &p_Filename);
 
+		int bd_find_first_free_i_node();
+
+		int bd_find_first_free_block();
+
 		// Vous pouvez ajouter ici d'autres méthodes publiques
 
 	private:
