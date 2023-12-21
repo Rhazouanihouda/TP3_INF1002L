@@ -59,8 +59,9 @@ namespace TP3
 			// Initializer le i-node 1 du répertoire racine.
 			m_blockDisque[BASE_BLOCK_INODE + ROOT_INODE].m_inode->st_mode = S_IFDIR;
 			m_blockDisque[BASE_BLOCK_INODE + ROOT_INODE].m_dirEntry = std::vector<dirEntry *>();
-			create_dot_dot_entry(ROOT_INODE, ROOT_INODE);
 			create_dot_entry(ROOT_INODE);
+			create_dot_dot_entry(ROOT_INODE, ROOT_INODE);
+
 			//  Marquez le i-node 1 comme occupé - Pour le repertoire racine.
 			mark_i_node_as_used(ROOT_INODE, false);
 
@@ -76,10 +77,6 @@ namespace TP3
 	{
 		// TODO
 		auto splitResult = split(p_FileName, '/');
-		if (splitResult.size() == 0)
-		{
-			return 0;
-		}
 		auto fileName = splitResult[splitResult.size() - 1];
 
 		size_t dNode_block_number = BASE_BLOCK_INODE + ROOT_INODE;
@@ -123,56 +120,140 @@ namespace TP3
 	{
 		// TODO
 		auto splitResult = split(p_DirName, '/');
-		if (splitResult.size() == 0)
+		if (splitResult.size() > 1)
 		{
-			return 0;
-		}
-		auto folderName = splitResult[splitResult.size() - 1];
+			auto folderName = splitResult[splitResult.size() - 1];
 
-		size_t dNode_block_number = BASE_BLOCK_INODE + ROOT_INODE;
-		// Loop over the split result and find the i-node of the last directory.
-		for (int i = 0; i < splitResult.size(); i++)
-		{
-			if (splitResult[i] == folderName)
+			size_t dNode_block_number = BASE_BLOCK_INODE + ROOT_INODE;
+			// Loop over the split result and find the i-node of the last directory.
+			for (int i = 0; i < splitResult.size(); i++)
 			{
-
-				// Check if file already exists...
-				if (folder_exists_on_block(dNode_block_number, folderName))
+				if (splitResult[i] == folderName)
 				{
-					return 0;
-				}
 
-				// Find the first free i-node and create the new folder.
-				auto n = bd_find_first_free_i_node();
-				m_blockDisque[n + BASE_BLOCK_INODE].m_inode = new iNode(n, S_IFDIR, 1, 0, n + BASE_BLOCK_INODE);
-				m_blockDisque[n + BASE_BLOCK_INODE].m_dirEntry = std::vector<dirEntry *>(); // Initializer le type de données du bloc.
-				m_blockDisque[n + BASE_BLOCK_INODE].m_type_donnees = S_IFIN;				// Initializer le type de données du bloc.
-				mark_block_as_used(n + BASE_BLOCK_INODE, false);
-				mark_i_node_as_used(n, false);
-				create_dot_entry(n);
-				create_dot_dot_entry(n, dNode_block_number - BASE_BLOCK_INODE);
-				m_blockDisque[dNode_block_number].m_dirEntry.push_back(new dirEntry(n, folderName));
-				m_blockDisque[dNode_block_number].m_inode->st_nlink++;
-				return 1;
-			}
-			else
-			{
-				// Find the i-node of the directory.
-				for (int j = 0; j < m_blockDisque[dNode_block_number].m_dirEntry.size(); j++)
-				{
-					if (m_blockDisque[dNode_block_number].m_dirEntry[j]->m_filename == splitResult[i])
+					// Check if file already exists...
+					if (folder_exists_on_block(dNode_block_number, folderName))
 					{
-						dNode_block_number = BASE_BLOCK_INODE + m_blockDisque[dNode_block_number].m_dirEntry[j]->m_iNode;
+						return 0;
+					}
+
+					// Find the first free i-node and create the new folder.
+					auto n = bd_find_first_free_i_node();
+					m_blockDisque[n + BASE_BLOCK_INODE].m_inode = new iNode(n, S_IFDIR, 1, 0, n + BASE_BLOCK_INODE);
+					m_blockDisque[n + BASE_BLOCK_INODE].m_dirEntry = std::vector<dirEntry *>(); // Initializer le type de données du bloc.
+					m_blockDisque[n + BASE_BLOCK_INODE].m_type_donnees = S_IFIN;				// Initializer le type de données du bloc.
+					mark_block_as_used(n + BASE_BLOCK_INODE, false);
+					mark_i_node_as_used(n, false);
+					create_dot_entry(n);
+					create_dot_dot_entry(n, dNode_block_number - BASE_BLOCK_INODE);
+					m_blockDisque[dNode_block_number].m_dirEntry.push_back(new dirEntry(n, folderName));
+					m_blockDisque[dNode_block_number].m_inode->st_nlink++;
+					return 1;
+				}
+				else
+				{
+					// Find the i-node of the directory.
+					for (int j = 0; j < m_blockDisque[dNode_block_number].m_dirEntry.size(); j++)
+					{
+						if (m_blockDisque[dNode_block_number].m_dirEntry[j]->m_filename == splitResult[i])
+						{
+							dNode_block_number = BASE_BLOCK_INODE + m_blockDisque[dNode_block_number].m_dirEntry[j]->m_iNode;
+						}
 					}
 				}
 			}
 		}
+		else
+		{
+			// Find the first free i-node and create the new folder.
+			auto n = bd_find_first_free_i_node();
+			m_blockDisque[n + BASE_BLOCK_INODE].m_inode = new iNode(n, S_IFDIR, 1, 0, n + BASE_BLOCK_INODE);
+			m_blockDisque[n + BASE_BLOCK_INODE].m_dirEntry = std::vector<dirEntry *>(); // Initializer le type de données du bloc.
+			m_blockDisque[n + BASE_BLOCK_INODE].m_type_donnees = S_IFIN;				// Initializer le type de données du bloc.
+			mark_block_as_used(n + BASE_BLOCK_INODE, false);
+			mark_i_node_as_used(n, false);
+			create_dot_entry(n);
+			create_dot_dot_entry(n, n);
+			m_blockDisque[BASE_BLOCK_INODE + ROOT_INODE].m_dirEntry.push_back(new dirEntry(n, p_DirName));
+			m_blockDisque[BASE_BLOCK_INODE + ROOT_INODE].m_inode->st_nlink++;
+			return 1;
+		}
+
 		return 0;
 	}
 
 	std::string DisqueVirtuel::bd_ls(const std::string &p_DirLocation)
 	{
 		// TODO
+		std::stringstream ss;
+		auto splitResult = split(p_DirLocation, '/');
+
+		if (splitResult.size() > 1)
+		{
+			auto folderName = splitResult[splitResult.size() - 1];
+			size_t dNode_block_number = BASE_BLOCK_INODE + ROOT_INODE;
+			for (int i = 0; i < splitResult.size(); i++)
+			{
+				if (splitResult[i] == folderName)
+				{
+					// Check if folder already exists...
+					if (!folder_exists_on_block(dNode_block_number, folderName))
+					{
+						ss << "Directory " << p_DirLocation << " does not exist." << std::endl;
+						return ss.str();
+					}
+					else
+					{
+						for (int j = 0; j < m_blockDisque[dNode_block_number].m_dirEntry.size(); j++)
+						{
+							if (m_blockDisque[dNode_block_number].m_dirEntry[j]->m_filename == folderName &&
+								m_blockDisque[m_blockDisque[dNode_block_number].m_dirEntry[j]->m_iNode + BASE_BLOCK_INODE].m_inode->st_mode == S_IFDIR)
+							{
+								dNode_block_number = BASE_BLOCK_INODE + m_blockDisque[dNode_block_number].m_dirEntry[j]->m_iNode;
+								break;
+							}
+						}
+						for (int k = 0; k < m_blockDisque[dNode_block_number].m_dirEntry.size(); k++)
+						{
+							m_blockDisque[BASE_BLOCK_INODE + m_blockDisque[dNode_block_number].m_dirEntry[k]->m_iNode].m_inode->st_mode == S_IFDIR
+								? ss << "d\t"
+								: ss << "-\t";
+							ss << m_blockDisque[dNode_block_number].m_dirEntry[k]->m_filename
+							   << " Size: \t"
+							   << " inode: \t"
+							   << " nlink: \t" << std::endl;
+						}
+						return ss.str();
+					}
+				}
+				else
+				{
+					// Find the i-node of the directory.
+					for (int j = 0; j < m_blockDisque[dNode_block_number].m_dirEntry.size(); j++)
+					{
+						if (m_blockDisque[dNode_block_number].m_dirEntry[j]->m_filename == splitResult[i])
+						{
+							dNode_block_number = BASE_BLOCK_INODE + m_blockDisque[dNode_block_number].m_dirEntry[j]->m_iNode;
+						}
+					}
+				}
+			}
+		}
+		else
+		{
+			for (int i = 0; i < m_blockDisque[BASE_BLOCK_INODE + ROOT_INODE].m_dirEntry.size(); i++)
+			{
+				m_blockDisque[BASE_BLOCK_INODE + ROOT_INODE].m_inode->st_mode == S_IFDIR
+					? ss << "d\t"
+					: ss << "-\t";
+				ss << m_blockDisque[BASE_BLOCK_INODE + ROOT_INODE].m_dirEntry[i]->m_filename
+				   << "\t Size: \t"
+				   << "\t inode: \t"
+				   << "\t nlink: \t" << std::endl;
+			}
+		}
+
+		return ss.str();
 	}
 
 	int DisqueVirtuel::bd_rm(const std::string &p_Filename)
@@ -234,6 +315,7 @@ namespace TP3
 			if (m_blockDisque[p_blockNumber].m_dirEntry[k]->m_filename == p_FolderName &&
 				m_blockDisque[m_blockDisque[p_blockNumber].m_dirEntry[k]->m_iNode + BASE_BLOCK_INODE].m_inode->st_mode == S_IFDIR)
 			{
+				std::cout << "Found folder " << p_FolderName << std::endl;
 				return true;
 			}
 		}
@@ -285,15 +367,7 @@ namespace TP3
 	std::vector<std::string> DisqueVirtuel::split(const std::string &s, char delim)
 	{
 		std::vector<std::string> result = std::vector<std::string>();
-		std::stringstream ss;
-		if (s.at(0) == delim)
-		{
-			ss << s.substr(1);
-		}
-		else
-		{
-			ss << s;
-		}
+		std::stringstream ss(s);
 		std::string item;
 		while (getline(ss, item, delim))
 		{
