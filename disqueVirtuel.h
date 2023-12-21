@@ -41,6 +41,12 @@ namespace TP3
 
 		int bd_find_first_free_block();
 
+		int mark_i_node_as_used(const size_t &p_iNodeNumber, const bool &p_isUsed);
+		int mark_block_as_used(const size_t &p_BlockNumber, const bool &p_isUsed);
+
+		bool file_exists_on_block(const size_t &p_blockNumber, const std::string &p_FileName);
+
+		bool folder_exists_on_block(const size_t &p_blockNumber, const std::string &p_FolderName);
 		// Vous pouvez ajouter ici d'autres méthodes publiques
 
 	private:

@@ -43,7 +43,7 @@ namespace TP3
 			// Marquez les blocs 0 à 23 comme occupés.
 			for (int i = 0; i < 24; i++)
 			{
-				m_blockDisque[FREE_BLOCK_BITMAP].m_bitmap[i] = false;
+				mark_block_as_used(i, false);
 			}
 
 			// Marquez le i-nodes 0 comme occupé - contient la liste des blocs defectueux.
@@ -60,7 +60,7 @@ namespace TP3
 			m_blockDisque[BASE_BLOCK_INODE + ROOT_INODE].m_inode->st_mode = S_IFDIR;
 			m_blockDisque[BASE_BLOCK_INODE + ROOT_INODE].m_dirEntry = std::vector<dirEntry *>();
 			//  Marquez le i-node 1 comme occupé - Pour le repertoire racine.
-			m_blockDisque[FREE_INODE_BITMAP].m_bitmap[1] = false;
+			mark_i_node_as_used(ROOT_INODE, false);
 
 			return 1;
 		}
@@ -80,45 +80,38 @@ namespace TP3
 		}
 		auto fileName = splitResult[splitResult.size() - 1];
 
+		size_t dNode_block_number = BASE_BLOCK_INODE + ROOT_INODE;
 		// Loop over the split result and find the i-node of the last directory.
 		for (int i = 0; i < splitResult.size(); i++)
 		{
-			size_t dNode = BASE_BLOCK_INODE + ROOT_INODE;
 			if (splitResult[i] == fileName)
 			{
 
 				// Check if file already exists...
-				for (int k = 0; k < m_blockDisque[dNode].m_dirEntry.size(); k++)
+				if (file_exists_on_block(dNode_block_number, fileName))
 				{
-					if (m_blockDisque[dNode].m_dirEntry[k]->m_filename == fileName) // file with provided name already exists...
-					{
-						return 0;
-					}
+					return 0;
 				}
 
 				// Find the first free i-node and create the new file.
 				auto n = bd_find_first_free_i_node();
 				m_blockDisque[n + BASE_BLOCK_INODE].m_inode = new iNode(n, S_IFREG, 1, 0, n + BASE_BLOCK_INODE);
+				m_blockDisque[n + BASE_BLOCK_INODE].m_type_donnees = S_IFIN; // Initializer le type de données du bloc.
+				mark_block_as_used(n + BASE_BLOCK_INODE, false);
+				mark_i_node_as_used(n, false);
+				m_blockDisque[dNode_block_number].m_dirEntry.push_back(new dirEntry(n, fileName));
+				return 1;
 			}
 			else
 			{
 				// Find the i-node of the directory.
-				for (int j = 0; j < m_blockDisque[dNode].m_dirEntry.size(); j++)
+				for (int j = 0; j < m_blockDisque[dNode_block_number].m_dirEntry.size(); j++)
 				{
-					if (m_blockDisque[dNode].m_dirEntry[j]->m_filename == splitResult[i])
+					if (m_blockDisque[dNode_block_number].m_dirEntry[j]->m_filename == splitResult[i])
 					{
-						dNode = m_blockDisque[dNode].m_dirEntry[j]->m_iNode;
+						dNode_block_number = BASE_BLOCK_INODE + m_blockDisque[dNode_block_number].m_dirEntry[j]->m_iNode;
 					}
 				}
-			}
-		}
-
-		// Find the i-node on which to create the dir entry.
-		for (int i = 0; i < m_blockDisque[BASE_BLOCK_INODE + ROOT_INODE].m_dirEntry.size(); i++)
-		{
-			if (m_blockDisque[BASE_BLOCK_INODE + ROOT_INODE].m_dirEntry[i]->m_filename == fileName)
-			{
-				return 0;
 			}
 		}
 	}
@@ -126,6 +119,48 @@ namespace TP3
 	int DisqueVirtuel::bd_mkdir(const std::string &p_DirName)
 	{
 		// TODO
+		auto splitResult = split(p_DirName, '/');
+		if (splitResult.size() == 0)
+		{
+			return 0;
+		}
+		auto folderName = splitResult[splitResult.size() - 1];
+
+		size_t dNode_block_number = BASE_BLOCK_INODE + ROOT_INODE;
+		// Loop over the split result and find the i-node of the last directory.
+		for (int i = 0; i < splitResult.size(); i++)
+		{
+			if (splitResult[i] == folderName)
+			{
+
+				// Check if file already exists...
+				if (folder_exists_on_block(dNode_block_number, folderName))
+				{
+					return 0;
+				}
+
+				// Find the first free i-node and create the new folder.
+				auto n = bd_find_first_free_i_node();
+				m_blockDisque[n + BASE_BLOCK_INODE].m_inode = new iNode(n, S_IFDIR, 1, 0, n + BASE_BLOCK_INODE);
+				m_blockDisque[n + BASE_BLOCK_INODE].m_type_donnees = S_IFIN; // Initializer le type de données du bloc.
+				mark_block_as_used(n + BASE_BLOCK_INODE, false);
+				mark_i_node_as_used(n, false);
+				m_blockDisque[dNode_block_number].m_dirEntry.push_back(new dirEntry(n, folderName));
+				m_blockDisque[dNode_block_number].m_inode->st_nlink++;
+				return 1;
+			}
+			else
+			{
+				// Find the i-node of the directory.
+				for (int j = 0; j < m_blockDisque[dNode_block_number].m_dirEntry.size(); j++)
+				{
+					if (m_blockDisque[dNode_block_number].m_dirEntry[j]->m_filename == splitResult[i])
+					{
+						dNode_block_number = BASE_BLOCK_INODE + m_blockDisque[dNode_block_number].m_dirEntry[j]->m_iNode;
+					}
+				}
+			}
+		}
 	}
 
 	std::string DisqueVirtuel::bd_ls(const std::string &p_DirLocation)
@@ -160,6 +195,42 @@ namespace TP3
 				return i;
 			}
 		}
+	}
+
+	int DisqueVirtuel::mark_i_node_as_used(const size_t &p_iNodeNumber, const bool &p_isUsed)
+	{
+		m_blockDisque[FREE_INODE_BITMAP].m_bitmap[p_iNodeNumber] = p_isUsed;
+	}
+
+	int DisqueVirtuel::mark_block_as_used(const size_t &p_BlockNumber, const bool &p_isUsed)
+	{
+		m_blockDisque[FREE_BLOCK_BITMAP].m_bitmap[p_BlockNumber] = p_isUsed;
+	}
+
+	bool DisqueVirtuel::file_exists_on_block(const size_t &p_blockNumber, const std::string &p_FileName)
+	{
+		for (int k = 0; k < m_blockDisque[p_blockNumber].m_dirEntry.size(); k++)
+		{
+			if (m_blockDisque[p_blockNumber].m_dirEntry[k]->m_filename == p_FileName &&
+				m_blockDisque[m_blockDisque[p_blockNumber].m_dirEntry[k]->m_iNode + BASE_BLOCK_INODE].m_inode->st_mode == S_IFREG)
+			{
+				return true;
+			}
+		}
+		return false;
+	}
+
+	bool DisqueVirtuel::folder_exists_on_block(const size_t &p_blockNumber, const std::string &p_FolderName)
+	{
+		for (int k = 0; k < m_blockDisque[p_blockNumber].m_dirEntry.size(); k++)
+		{
+			if (m_blockDisque[p_blockNumber].m_dirEntry[k]->m_filename == p_FolderName &&
+				m_blockDisque[m_blockDisque[p_blockNumber].m_dirEntry[k]->m_iNode + BASE_BLOCK_INODE].m_inode->st_mode == S_IFDIR)
+			{
+				return true;
+			}
+		}
+		return false;
 	}
 
 #pragma endregion
