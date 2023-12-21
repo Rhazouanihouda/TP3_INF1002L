@@ -47,6 +47,10 @@ namespace TP3
 		bool file_exists_on_block(const size_t &p_blockNumber, const std::string &p_FileName);
 
 		bool folder_exists_on_block(const size_t &p_blockNumber, const std::string &p_FolderName);
+
+		bool create_dot_entry(const size_t &p_iNodeNumber);
+
+		bool create_dot_dot_entry(const size_t &p_iNodeNumber, const size_t &p_parentINodeNumber);
 		// Vous pouvez ajouter ici d'autres méthodes publiques
 
 	private:

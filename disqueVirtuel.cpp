@@ -59,6 +59,8 @@ namespace TP3
 			// Initializer le i-node 1 du répertoire racine.
 			m_blockDisque[BASE_BLOCK_INODE + ROOT_INODE].m_inode->st_mode = S_IFDIR;
 			m_blockDisque[BASE_BLOCK_INODE + ROOT_INODE].m_dirEntry = std::vector<dirEntry *>();
+			create_dot_dot_entry(ROOT_INODE, ROOT_INODE);
+			create_dot_entry(ROOT_INODE);
 			//  Marquez le i-node 1 comme occupé - Pour le repertoire racine.
 			mark_i_node_as_used(ROOT_INODE, false);
 
@@ -114,6 +116,7 @@ namespace TP3
 				}
 			}
 		}
+		return 0;
 	}
 
 	int DisqueVirtuel::bd_mkdir(const std::string &p_DirName)
@@ -142,9 +145,12 @@ namespace TP3
 				// Find the first free i-node and create the new folder.
 				auto n = bd_find_first_free_i_node();
 				m_blockDisque[n + BASE_BLOCK_INODE].m_inode = new iNode(n, S_IFDIR, 1, 0, n + BASE_BLOCK_INODE);
-				m_blockDisque[n + BASE_BLOCK_INODE].m_type_donnees = S_IFIN; // Initializer le type de données du bloc.
+				m_blockDisque[n + BASE_BLOCK_INODE].m_dirEntry = std::vector<dirEntry *>(); // Initializer le type de données du bloc.
+				m_blockDisque[n + BASE_BLOCK_INODE].m_type_donnees = S_IFIN;				// Initializer le type de données du bloc.
 				mark_block_as_used(n + BASE_BLOCK_INODE, false);
 				mark_i_node_as_used(n, false);
+				create_dot_entry(n);
+				create_dot_dot_entry(n, dNode_block_number - BASE_BLOCK_INODE);
 				m_blockDisque[dNode_block_number].m_dirEntry.push_back(new dirEntry(n, folderName));
 				m_blockDisque[dNode_block_number].m_inode->st_nlink++;
 				return 1;
@@ -161,6 +167,7 @@ namespace TP3
 				}
 			}
 		}
+		return 0;
 	}
 
 	std::string DisqueVirtuel::bd_ls(const std::string &p_DirLocation)
@@ -229,6 +236,44 @@ namespace TP3
 			{
 				return true;
 			}
+		}
+		return false;
+	}
+
+	bool DisqueVirtuel::create_dot_entry(const size_t &p_iNodeNumber)
+	{
+		try
+		{
+			m_blockDisque[BASE_BLOCK_INODE + p_iNodeNumber].m_dirEntry.push_back(new dirEntry(p_iNodeNumber, "."));
+			m_blockDisque[BASE_BLOCK_INODE + p_iNodeNumber].m_inode->st_nlink++;
+			return true;
+		}
+		catch (...)
+		{
+			return false;
+		}
+		return false;
+	}
+
+	bool DisqueVirtuel::create_dot_dot_entry(const size_t &p_iNodeNumber, const size_t &p_parentINodeNumber)
+	{
+		try
+		{
+			m_blockDisque[BASE_BLOCK_INODE + p_iNodeNumber].m_dirEntry.push_back(new dirEntry(p_parentINodeNumber, ".."));
+			if (p_iNodeNumber == p_parentINodeNumber)
+			{
+				m_blockDisque[BASE_BLOCK_INODE + p_parentINodeNumber].m_inode->st_nlink++;
+			}
+			else
+			{
+				m_blockDisque[BASE_BLOCK_INODE + p_parentINodeNumber].m_inode->st_nlink++;
+				m_blockDisque[BASE_BLOCK_INODE + p_iNodeNumber].m_inode->st_nlink++;
+			}
+			return true;
+		}
+		catch (...)
+		{
+			return false;
 		}
 		return false;
 	}
